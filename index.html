@@ -1,24 +1,393 @@
-// firebase-config.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getDatabase } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌸 Layali - أحدث الفيديوهات</title>
+    
+    <!-- Plyr CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f0a0c; color: #fff; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* ========== الألوان الزهرية ========== */
+        :root {
+            --primary: #e91e63;
+            --primary-dark: #c2185b;
+            --primary-light: #f06292;
+            --primary-soft: #f48fb1;
+            --bg-dark: #0f0a0c;
+            --bg-card: #1a1014;
+            --bg-sidebar: #1a1014;
+            --border-color: #3a2028;
+        }
+        
+        /* ========== Header ========== */
+        .header { background: rgba(26, 16, 20, 0.95); backdrop-filter: blur(10px); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 28px; font-weight: bold; background: linear-gradient(45deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo i { margin-left: 8px; -webkit-text-fill-color: var(--primary); }
+        
+        .auth-buttons { display: flex; gap: 15px; align-items: center; }
+        .user-area { display: flex; align-items: center; gap: 15px; }
+        .user-name { color: var(--primary); font-weight: bold; }
+        
+        button { padding: 10px 20px; border-radius: 30px; border: none; cursor: pointer; font-weight: bold; transition: all 0.3s; font-size: 14px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: scale(1.05); box-shadow: 0 5px 15px rgba(233, 30, 99, 0.3); }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-danger:hover { background: #d32f2f; }
+        .btn-sm { padding: 5px 15px; font-size: 12px; }
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCFTMtaIp9ld3UKmscT8MBxfCKh5_-fOcM",
-  authDomain: "amre-3fae9.firebaseapp.com",
-  databaseURL: "https://amre-3fae9-default-rtdb.firebaseio.com",
-  projectId: "amre-3fae9",
-  storageBucket: "amre-3fae9.firebasestorage.app",
-  messagingSenderId: "573470407576",
-  appId: "1:573470407576:web:3a24d023cbb10d6ce309ed",
-  measurementId: "G-MEB1GL3ET7"
-};
+        /* ========== Main Layout ========== */
+        .main-container { display: flex; max-width: 1600px; margin: 0 auto; width: 100%; flex: 1; }
+        
+        /* Admin Sidebar */
+        .admin-sidebar { width: 300px; background: var(--bg-sidebar); border-left: 1px solid var(--border-color); padding: 20px; display: none; }
+        .admin-sidebar h3 { color: var(--primary); margin-bottom: 20px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 30px; }
+        .stat-card { background: #25171c; padding: 15px; border-radius: 12px; text-align: center; }
+        .stat-number { font-size: 24px; font-weight: bold; color: var(--primary); }
+        .section-title { font-size: 16px; margin: 20px 0 10px; color: #aaa; }
+        .member-list, .video-list { max-height: 400px; overflow-y: auto; }
+        .member-item, .admin-video-item { background: #25171c; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Content Area */
+        .content-area { flex: 1; padding: 30px; }
+        
+        /* Hero Section */
+        .hero-section { text-align: center; padding: 20px 0 40px; }
+        .hero-title { font-size: 48px; font-weight: bold; margin-bottom: 15px; background: linear-gradient(45deg, #fff, var(--primary-soft)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { color: #aaa; font-size: 18px; margin-bottom: 30px; }
+        
+        /* Guest Message */
+        .guest-message { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 20px; border-radius: 16px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; animation: slideDown 0.5s ease; }
+        .guest-message p { margin: 0; font-size: 18px; }
+        
+        /* Upload Section */
+        .upload-section { background: var(--bg-card); border-radius: 16px; padding: 30px; margin-bottom: 40px; border: 2px dashed var(--primary); display: none; }
+        .upload-section h2 { margin-bottom: 20px; color: var(--primary); }
+        
+        /* Section Header */
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; }
+        .section-header h2 { color: var(--primary); font-size: 28px; }
+        .section-header h2 i { margin-left: 10px; }
+        
+        /* Video Grid */
+        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        .video-card { background: var(--bg-card); border-radius: 16px; overflow: hidden; transition: all 0.3s; border: 1px solid var(--border-color); cursor: pointer; animation: fadeIn 0.5s ease; }
+        .video-card:hover { transform: translateY(-8px); border-color: var(--primary); box-shadow: 0 10px 30px rgba(233, 30, 99, 0.2); }
+        .thumbnail-container { position: relative; padding-top: 56.25%; background: #000; }
+        .thumbnail { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        .card-info { padding: 15px; }
+        .video-title { font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .video-meta { font-size: 12px; color: #aaa; display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .video-stats { display: flex; gap: 15px; color: #aaa; font-size: 13px; }
+        .video-stats i { margin-left: 5px; color: var(--primary); }
+        .like-btn { color: #aaa; transition: all 0.3s; cursor: pointer; }
+        .like-btn:hover { color: var(--primary); }
+        .like-btn.liked { color: var(--primary); }
+        .delete-btn { position: absolute; top: 10px; right: 10px; background: rgba(244, 67, 54, 0.9); color: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 10; }
+        .video-card:hover .delete-btn { display: flex; }
+        
+        /* ========== Modal ========== */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; overflow-y: auto; }
+        .modal-content { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .video-container { background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--primary); }
+        .video-info-panel { background: var(--bg-card); border-radius: 16px; padding: 25px; }
+        .video-title-large { font-size: 24px; margin-bottom: 15px; }
+        .video-actions { display: flex; gap: 20px; margin: 20px 0; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+        .action-btn { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: #25171c; border-radius: 40px; cursor: pointer; transition: all 0.3s; }
+        .action-btn:hover { background: #3a2028; }
+        .action-btn.liked { background: var(--primary); color: white; }
+        
+        /* Comments Section */
+        .comments-section { margin-top: 20px; }
+        .comments-title { font-size: 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
+        .comment-form { display: flex; gap: 10px; margin-bottom: 25px; }
+        .comment-input { flex: 1; padding: 14px; background: #25171c; border: 1px solid var(--border-color); color: white; border-radius: 30px; }
+        .comment-input:focus { outline: none; border-color: var(--primary); }
+        .comment-list { max-height: 400px; overflow-y: auto; }
+        .comment-item { display: flex; gap: 12px; padding: 15px 0; border-bottom: 1px solid var(--border-color); }
+        .comment-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .comment-content { flex: 1; }
+        .comment-author { font-weight: bold; margin-bottom: 5px; color: var(--primary); }
+        .comment-text { color: #ddd; margin-bottom: 5px; }
+        .comment-time { font-size: 11px; color: #666; }
+        
+        .close-modal { position: fixed; top: 20px; left: 20px; color: white; font-size: 30px; cursor: pointer; z-index: 1001; background: rgba(0,0,0,0.5); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .close-modal:hover { background: var(--primary); }
+        
+        /* Login Prompt */
+        .login-prompt { background: #25171c; border: 1px solid var(--primary); border-radius: 12px; padding: 15px; margin: 15px 0; display: flex; align-items: center; justify-content: space-between; }
+        .login-prompt p { margin: 0; color: var(--primary); }
+        
+        /* ========== Auth Modal ========== */
+        .auth-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1001; justify-content: center; align-items: center; }
+        .auth-box { background: var(--bg-card); padding: 40px; border-radius: 24px; width: 400px; position: relative; animation: slideUp 0.3s ease; border: 1px solid var(--primary); }
+        .auth-box h3 { color: var(--primary); margin-bottom: 20px; }
+        .auth-box input { width: 100%; padding: 14px; margin-bottom: 15px; background: #25171c; border: 1px solid var(--border-color); color: white; border-radius: 12px; }
+        .auth-box input:focus { outline: none; border-color: var(--primary); }
+        .close-auth { position: absolute; top: 20px; left: 20px; color: #aaa; cursor: pointer; font-size: 24px; }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; }
+        .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+        
+        /* ========== Toast ========== */
+        .toast { position: fixed; bottom: 30px; right: 30px; background: #25171c; color: white; padding: 16px 24px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 2000; animation: slideUp 0.3s ease; display: flex; align-items: center; gap: 12px; border-right: 4px solid var(--primary); }
+        .toast.success { border-right-color: #4caf50; }
+        .toast.error { border-right-color: #f44336; }
+        .toast.warning { border-right-color: #ff9800; }
+        
+        /* ========== Settings Section ========== */
+        .settings-section { background: #25171c; padding: 15px; border-radius: 12px; }
+        .settings-section label { display: block; margin-bottom: 5px; color: #aaa; }
+        .settings-section input { width: 100%; padding: 10px; background: var(--bg-card); border: 1px solid var(--border-color); color: white; border-radius: 8px; margin-bottom: 15px; }
+        .settings-section input:focus { outline: none; border-color: var(--primary); }
+        
+        /* ========== Footer ========== */
+        .footer { background: var(--bg-card); border-top: 1px solid var(--border-color); padding: 40px 30px 20px; margin-top: auto; }
+        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 40px; }
+        .footer-section h3 { color: var(--primary); margin-bottom: 20px; }
+        .footer-section ul { list-style: none; }
+        .footer-section li { margin-bottom: 10px; }
+        .footer-section a { color: #aaa; text-decoration: none; transition: color 0.3s; }
+        .footer-section a:hover { color: var(--primary); }
+        .footer-bottom { text-align: center; padding-top: 30px; margin-top: 30px; border-top: 1px solid var(--border-color); color: #666; }
+        .social-links { display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+        .social-links a { color: #aaa; font-size: 20px; transition: all 0.3s; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+        .social-links a:hover { color: var(--primary); transform: translateY(-3px); }
+        .social-links a i { font-size: 24px; }
+        
+        /* ========== Animations ========== */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Scrollbar زهري */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-card); }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo"><i class="fas fa-heart"></i> Layali</div>
+        
+        <div class="auth-buttons" id="authButtons">
+            <button class="btn-outline" onclick="showAuthModal('login')"><i class="fas fa-sign-in-alt"></i> دخول</button>
+            <button class="btn-primary" onclick="showAuthModal('register')"><i class="fas fa-user-plus"></i> اشتراك</button>
+        </div>
+        
+        <div class="user-area" id="userArea" style="display: none;">
+            <span class="user-name" id="displayName"></span>
+            <button class="btn-outline" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> خروج</button>
+        </div>
+    </div>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const database = getDatabase(app);
+    <!-- Auth Modal -->
+    <div class="auth-modal" id="authModal">
+        <div class="auth-box">
+            <span class="close-auth" onclick="closeAuthModal()">&times;</span>
+            <h3><i class="fas fa-heart"></i> انضم إلى Layali</h3>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchAuthTab('login')">دخول</div>
+                <div class="tab" onclick="switchAuthTab('register')">اشتراك</div>
+            </div>
+            
+            <form id="loginForm">
+                <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" required>
+                <input type="password" id="loginPassword" placeholder="كلمة المرور" required>
+                <button type="submit" class="btn-primary" style="width: 100%;">دخول</button>
+            </form>
+            
+            <form id="registerForm" style="display: none;">
+                <input type="text" id="registerName" placeholder="الاسم المستعار" required>
+                <input type="email" id="registerEmail" placeholder="البريد الإلكتروني" required>
+                <input type="password" id="registerPassword" placeholder="كلمة المرور (6 أحرف)" required>
+                <button type="submit" class="btn-primary" style="width: 100%;">إنشاء حساب</button>
+            </form>
+            
+            <div id="authMessage" style="margin-top: 15px; text-align: center;"></div>
+        </div>
+    </div>
 
-const CLOUDINARY_CLOUD_NAME = 'da457cqma';
-const CLOUDINARY_UPLOAD_PRESET = 'do33_x';
+    <div class="main-container">
+        <!-- Admin Sidebar -->
+        <div class="admin-sidebar" id="adminSidebar">
+            <h3><i class="fas fa-crown"></i> لوحة التحكم</h3>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalMembers">0</div>
+                    <div>👥 أعضاء</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalVideos">0</div>
+                    <div>🎬 فيديو</div>
+                </div>
+            </div>
+            
+            <div class="section-title">👥 الأعضاء</div>
+            <div class="member-list" id="memberList"></div>
+            
+            <div class="section-title">🎬 جميع الفيديوهات</div>
+            <div class="video-list" id="adminVideoList"></div>
+            
+            <div class="section-title">⚙️ إعدادات الموقع</div>
+            <div class="settings-section">
+                <label>📸 انستقرام</label>
+                <input type="text" id="adminInstagram" placeholder="https://instagram.com/...">
+                <label>🎵 تيك توك</label>
+                <input type="text" id="adminTiktok" placeholder="https://tiktok.com/...">
+                <label>▶️ يوتيوب</label>
+                <input type="text" id="adminYoutube" placeholder="https://youtube.com/...">
+                <label>🐦 إكس (تويتر)</label>
+                <input type="text" id="adminX" placeholder="https://x.com/...">
+                <button class="btn-primary" onclick="saveSocialLinks()" style="width: 100%; margin-top: 10px;">
+                    <i class="fas fa-save"></i> حفظ الإعدادات
+                </button>
+            </div>
+        </div>
 
-export { auth, database, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET };
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Hero Section -->
+            <div class="hero-section">
+                <h1 class="hero-title"><i class="fas fa-fire"></i> أحدث الفيديوهات</h1>
+                <p class="hero-subtitle">شاهد أحدث ما تم نشره على ليالي</p>
+            </div>
+            
+            <div class="guest-message" id="guestMessage">
+                <p><i class="fas fa-eye"></i> أنت تشاهد كزائر. <strong>سجل الآن</strong> لرفع فيديوهاتك والتفاعل!</p>
+                <button class="btn-primary" onclick="showAuthModal('register')"><i class="fas fa-star"></i> اشترك مجاناً</button>
+            </div>
+            
+            <div class="upload-section" id="uploadSection">
+                <h2><i class="fas fa-cloud-upload-alt"></i> شارك فيديو جديد</h2>
+                <input type="file" id="videoFile" accept="video/*" style="margin: 20px 0; color: white;">
+                <input type="text" id="videoTitle" placeholder="عنوان الفيديو" style="padding: 12px; width: 100%; border-radius: 30px; border: none; background: #25171c; color: white; margin-bottom: 15px;">
+                <button class="btn-primary" id="uploadBtn"><i class="fas fa-rocket"></i> رفع الفيديو</button>
+                <progress id="progressBar" value="0" max="100" style="width: 100%; margin-top: 20px; display: none;"></progress>
+                <p id="uploadStatus" style="color: #aaa; margin-top: 15px;"></p>
+            </div>
+
+            <div class="section-header">
+                <h2><i class="fas fa-clock"></i> فيديوهات جديدة</h2>
+                <span style="color: var(--primary);"><i class="fas fa-sync-alt"></i> تحديث مباشر</span>
+            </div>
+            
+            <div class="video-grid" id="videoGrid">
+                <div style="color: #aaa; text-align: center; grid-column: 1/-1; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin"></i> جاري تحميل أحدث الفيديوهات...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Modal -->
+    <div class="modal" id="videoModal">
+        <span class="close-modal" onclick="closeVideoModal()">&times;</span>
+        <div class="modal-content">
+            <div class="video-container">
+                <video id="modalVideo" controls playsinline></video>
+            </div>
+            <div class="video-info-panel">
+                <h2 class="video-title-large" id="modalVideoTitle"></h2>
+                <div style="color: #aaa; margin-bottom: 15px;">
+                    <span id="modalVideoUploader"></span> • 
+                    <span id="modalVideoDate"></span> • 
+                    <span><i class="fas fa-eye"></i> <span id="modalVideoViews">0</span> مشاهدة</span>
+                </div>
+                
+                <div class="video-actions">
+                    <div class="action-btn" id="modalLikeBtn" onclick="handleLike()">
+                        <i class="far fa-heart"></i>
+                        <span id="modalLikesCount">0</span> إعجاب
+                    </div>
+                    <div class="action-btn" onclick="shareVideo()">
+                        <i class="fas fa-share"></i> مشاركة
+                    </div>
+                </div>
+                
+                <div class="comments-section">
+                    <div class="comments-title">
+                        <i class="fas fa-comments"></i>
+                        <span><span id="commentsCount">0</span> تعليقات</span>
+                    </div>
+                    
+                    <div id="loginPromptMessage" class="login-prompt" style="display: none;">
+                        <p><i class="fas fa-lock"></i> سجل دخولك للتعليق والإعجاب</p>
+                        <button class="btn-primary btn-sm" onclick="showAuthModal('login')">دخول</button>
+                    </div>
+                    
+                    <div id="commentFormContainer">
+                        <div class="comment-form">
+                            <input type="text" class="comment-input" id="commentInput" placeholder="أضف تعليقاً...">
+                            <button class="btn-primary" onclick="addComment()">نشر</button>
+                        </div>
+                    </div>
+                    
+                    <div class="comment-list" id="commentList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3><i class="fas fa-heart"></i> Layali</h3>
+                <p style="color: #aaa;">منصة ليالي - شاهد أحدث الفيديوهات وشارك إبداعك مع العالم.</p>
+                <div class="social-links">
+                    <a href="#" id="instagramLink" target="_blank"><i class="fab fa-instagram"></i> Instagram</a>
+                    <a href="#" id="tiktokLink" target="_blank"><i class="fab fa-tiktok"></i> TikTok</a>
+                    <a href="#" id="youtubeLink" target="_blank"><i class="fab fa-youtube"></i> YouTube</a>
+                    <a href="#" id="xLink" target="_blank"><i class="fab fa-x-twitter"></i> X</a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3>روابط سريعة</h3>
+                <ul>
+                    <li><a href="#">الرئيسية</a></li>
+                    <li><a href="#">الفيديوهات الرائجة</a></li>
+                    <li><a href="#">أحدث الفيديوهات</a></li>
+                    <li><a href="#">المبدعين</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>الدعم</h3>
+                <ul>
+                    <li><a href="#">مركز المساعدة</a></li>
+                    <li><a href="#">سياسة الخصوصية</a></li>
+                    <li><a href="#">شروط الاستخدام</a></li>
+                    <li><a href="#">اتصل بنا</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>إحصائيات</h3>
+                <ul style="color: #aaa;">
+                    <li><i class="fas fa-users"></i> <span id="footerMembers">0</span>+ عضو</li>
+                    <li><i class="fas fa-video"></i> <span id="footerVideos">0</span>+ فيديو</li>
+                    <li><i class="fas fa-eye"></i> <span id="footerViews">0</span>+ مشاهدة</li>
+                    <li><i class="fas fa-heart"></i> <span id="footerLikes">0</span>+ إعجاب</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2024 Layali. جميع الحقوق محفوظة. صنع بكل 💖</p>
+        </div>
+    </footer>
+
+    <!-- Plyr JS -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
